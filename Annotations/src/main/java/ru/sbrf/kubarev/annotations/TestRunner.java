@@ -2,28 +2,52 @@ package ru.sbrf.kubarev.annotations;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 
 import static java.lang.Class.*;
 
 public class TestRunner {
 
-    public static void ImplementTest(String classname)
+    private ArrayList<Method> beforeMethods;
+    private ArrayList<Method> afterMethods;
+    private ArrayList<Method> testMethods;
+    Class clt;
+
+    public TestRunner(String classname)
     {
         try {
-            Class clt = forName(classname);
-
-            Method met[] = clt.getDeclaredMethods();
-            String output = "";
-            for (Method m : met)
+            beforeMethods = new ArrayList<>();
+            afterMethods = new ArrayList<>();
+            testMethods = new ArrayList<>();
+            clt = forName(classname);
+            for (Method m : clt.getDeclaredMethods())
             {
+                if (m.isAnnotationPresent(Before.class))
+                    beforeMethods.add(m);
+                if (m.isAnnotationPresent(After.class))
+                    afterMethods.add(m);
                 if (m.isAnnotationPresent(Test.class))
-                {
+                    testMethods.add(m);
+            }
+        }
+        catch(Exception e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public String ImplementTest()
+    {
+
+        try {
+            String output = "";
+            for (Method m : testMethods)
+            {
                     Constructor constructor = clt.getConstructor();
                     Object obj = constructor.newInstance();
-                    for (Method mbef : met)
+                    for (Method mbef : beforeMethods)
                     {
-                        if (mbef.isAnnotationPresent(Before.class))
-                            try {
+                        try{
                                 mbef.invoke(obj);
                                 output += mbef.getName() + " 'Before' invoked succefully \r\n";
                             }
@@ -40,10 +64,8 @@ public class TestRunner {
                     {
                         output += m.getName() + " 'Test' error " + e.toString() +"\r\n";
                     }
-
-                    for (Method maft : met)
+                    for (Method maft : afterMethods)
                     {
-                        if (maft.isAnnotationPresent(After.class))
                             try {
                                 maft.invoke(obj);
                                 output += maft.getName() + " 'After' invoked succefully \r\n";
@@ -54,10 +76,7 @@ public class TestRunner {
                             }
                     }
                 }
-            }
-            System.out.println("Test results: ");
-            System.out.println(output);
-
+            return output;
         }
         catch(Exception e)
         {
